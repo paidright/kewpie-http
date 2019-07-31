@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,19 +22,34 @@ func init() {
 	queue.Connect(config.KEWPIE_BACKEND, config.QUEUES)
 }
 
+var publish = regexp.MustCompile(`/queues/.*/publish`)
+
 func main() {
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			healthHandler.ServeHTTP(w, r)
+			return
 		}
 
-		if r.URL.Path == "/publish" {
+		if r.URL.Path == "/healthz" {
+			healthHandler.ServeHTTP(w, r)
+			return
+		}
+
+		if publish.MatchString(r.URL.Path) {
 			// Take a task over the wire and pass it to the backend
+			publishHandler.ServeHTTP(w, r)
+			return
 		}
 
 		if r.URL.Path == "/subscribe" {
 			// Serve a task and immediately mark it complete yolo
+			notImplementedHandler.ServeHTTP(w, r)
+			return
 		}
+
+		notFoundHandler.ServeHTTP(w, r)
+		return
 	})
 
 	addr := ":" + os.Getenv("PORT")
@@ -47,7 +63,7 @@ func main() {
 	log.Fatalf("ERROR %+v", s.ListenAndServe())
 }
 
-func taskPostHandler(w http.ResponseWriter, r *http.Request) {
+var publishHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	task := kewpie.Task{}
 
 	if r.Header.Get("Content-Type") == "application/json" {
@@ -98,10 +114,22 @@ func taskPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(task)
-}
+})
 
 var healthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ok"))
+	return
+})
+
+var notImplementedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte("Not implemented"))
+	return
+})
+
+var notFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("Not found"))
 	return
 })
 

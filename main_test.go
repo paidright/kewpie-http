@@ -29,7 +29,7 @@ func TestPublishDelay(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	taskPostHandler(rr, req)
+	publishHandler(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	res := kewpie.Task{}
@@ -55,7 +55,7 @@ func TestPublishRunAt(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	taskPostHandler(rr, req)
+	publishHandler(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	res := kewpie.Task{}
@@ -78,7 +78,7 @@ func TestPublishNoExpBackoff(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	taskPostHandler(rr, req)
+	publishHandler(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	res := kewpie.Task{}
@@ -103,7 +103,7 @@ func TestPublishJSON(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	taskPostHandler(rr, req)
+	publishHandler(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	res := kewpie.Task{}
@@ -131,7 +131,7 @@ func TestPublishJSONAPI(t *testing.T) {
 	req.Header.Set("Accept", "application/vnd.api+json")
 
 	rr := httptest.NewRecorder()
-	taskPostHandler(rr, req)
+	publishHandler(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	res := jsonAPIPayload{}
