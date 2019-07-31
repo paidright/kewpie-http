@@ -111,4 +111,32 @@ func TestPublishJSON(t *testing.T) {
 	assert.Equal(t, runAt.Format(time.RFC3339), res.RunAt.Format(time.RFC3339))
 }
 
-// TODO post JSONAPI
+func TestPublishJSONAPI(t *testing.T) {
+	t.Parallel()
+
+	runAt := time.Now().Add(1 * time.Minute)
+
+	payload, err := json.Marshal(jsonAPIPayload{
+		Data: kewpie.Task{
+			Body:  `{"hi": "` + uuid.NewV4().String() + `"}`,
+			RunAt: runAt,
+		},
+	})
+	assert.Nil(t, err)
+
+	req, err := http.NewRequest("POST", "/queues/test/publish", bytes.NewReader(payload))
+	assert.Nil(t, err)
+
+	req.Header.Set("Content-Type", "application/vnd.api+json")
+	req.Header.Set("Accept", "application/vnd.api+json")
+
+	rr := httptest.NewRecorder()
+	taskPostHandler(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	res := jsonAPIPayload{}
+	huh := json.NewDecoder(rr.Body)
+	assert.Nil(t, huh.Decode(&res))
+	assert.Empty(t, res.Errors)
+	assert.Equal(t, runAt.Format(time.RFC3339), res.Data.RunAt.Format(time.RFC3339))
+}

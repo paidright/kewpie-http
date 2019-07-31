@@ -60,6 +60,18 @@ func taskPostHandler(w http.ResponseWriter, r *http.Request) {
 			errRes(w, r, http.StatusBadRequest, "Error decoding payload", err)
 			return
 		}
+	} else if r.Header.Get("Content-Type") == "application/vnd.api+json" {
+		bytes, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			errRes(w, r, http.StatusBadRequest, "Error receiving payload", err)
+			return
+		}
+		payload := jsonAPIPayload{}
+		if err := json.Unmarshal(bytes, &payload); err != nil {
+			errRes(w, r, http.StatusBadRequest, "Error decoding payload", err)
+			return
+		}
+		task = payload.Data
 	} else {
 		if decoded, err := decodeForm(r.Form); err != nil {
 			errRes(w, r, http.StatusBadRequest, err.Error(), err)
@@ -76,6 +88,14 @@ func taskPostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Header.Get("Accept") == "application/vnd.api+json" {
+		w.Header().Set("Content-Type", "application/json")
+		payload := jsonAPIPayload{
+			Data: task,
+		}
+		json.NewEncoder(w).Encode(payload)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(task)
 }
@@ -88,17 +108,22 @@ var healthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 func errRes(w http.ResponseWriter, r *http.Request, status int, message string, err error) {
 	fmt.Println("WARN sending error to client", status, message, err)
 
-	response := errorResponse{
-		Error: message,
+	errors := []map[string]string{}
+	errors = append(errors, map[string]string{
+		"detail": message,
+	})
+
+	response := jsonAPIPayload{
+		Errors: errors,
 	}
 
 	w.WriteHeader(status)
-	w.Header().Set("Content-Type", "application/json")
+	if r.Header.Get("Accept") == "application/vnd.api+json" {
+		w.Header().Set("Content-Type", "application/vnd.api+json")
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+	}
 	json.NewEncoder(w).Encode(response)
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
 }
 
 func decodeForm(input url.Values) (kewpie.Task, error) {
@@ -124,4 +149,10 @@ func decodeForm(input url.Values) (kewpie.Task, error) {
 	task.NoExpBackoff = input.Get("no_exp_backoff") == "true"
 
 	return task, nil
+}
+
+type jsonAPIPayload struct {
+	Errors []map[string]string `json:"errors"`
+	Data   kewpie.Task         `json:"data"`
+	Meta   map[string]string   `json:"meta"`
 }
