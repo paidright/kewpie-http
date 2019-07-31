@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -85,5 +86,29 @@ func TestPublishNoExpBackoff(t *testing.T) {
 	assert.True(t, res.NoExpBackoff)
 }
 
-// TODO post JSON as well as FORM
+func TestPublishJSON(t *testing.T) {
+	t.Parallel()
+
+	runAt := time.Now().Add(1 * time.Minute)
+
+	payload, err := json.Marshal(kewpie.Task{
+		Body:  `{"hi": "` + uuid.NewV4().String() + `"}`,
+		RunAt: runAt,
+	})
+	assert.Nil(t, err)
+
+	req, err := http.NewRequest("POST", "/queues/test/publish", bytes.NewReader(payload))
+	assert.Nil(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	taskPostHandler(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	res := kewpie.Task{}
+	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
+	assert.Equal(t, runAt.Format(time.RFC3339), res.RunAt.Format(time.RFC3339))
+}
+
 // TODO post JSONAPI

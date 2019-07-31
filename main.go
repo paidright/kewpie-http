@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -46,31 +48,25 @@ func main() {
 }
 
 func taskPostHandler(w http.ResponseWriter, r *http.Request) {
-	delay := time.Duration(0)
-	if r.FormValue("delay") != "" {
-		parsed, err := time.ParseDuration(r.FormValue("delay"))
+	task := kewpie.Task{}
+
+	if r.Header.Get("Content-Type") == "application/json" {
+		bytes, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			errRes(w, r, http.StatusBadRequest, "Delay is not a valid duration, eg: 1s", err)
+			errRes(w, r, http.StatusBadRequest, "Error receiving payload", err)
 			return
 		}
-		delay = parsed
-	}
-
-	runAt := time.Time{}
-	if r.FormValue("run_at") != "" {
-		parsed, err := time.Parse(time.RFC3339, r.FormValue("run_at"))
-		if err != nil {
-			errRes(w, r, http.StatusBadRequest, "Run At is not a valid RFC3339 string eg: 2006-01-02T15:04:05Z07:00", err)
+		if err := json.Unmarshal(bytes, &task); err != nil {
+			errRes(w, r, http.StatusBadRequest, "Error decoding payload", err)
 			return
 		}
-		runAt = parsed
-	}
-
-	task := kewpie.Task{
-		Body:         r.FormValue("body"),
-		Delay:        delay,
-		RunAt:        runAt,
-		NoExpBackoff: r.FormValue("no_exp_backoff") == "true",
+	} else {
+		if decoded, err := decodeForm(r.Form); err != nil {
+			errRes(w, r, http.StatusBadRequest, err.Error(), err)
+			return
+		} else {
+			task = decoded
+		}
 	}
 
 	queueName := strings.Split(r.URL.Path, "/")[2]
@@ -103,4 +99,29 @@ func errRes(w http.ResponseWriter, r *http.Request, status int, message string, 
 
 type errorResponse struct {
 	Error string `json:"error"`
+}
+
+func decodeForm(input url.Values) (kewpie.Task, error) {
+	task := kewpie.Task{}
+
+	if input.Get("delay") != "" {
+		parsed, err := time.ParseDuration(input.Get("delay"))
+		if err != nil {
+			return task, fmt.Errorf("Delay is not a valid duration, eg: 1s %s", err.Error())
+		}
+		task.Delay = parsed
+	}
+
+	if input.Get("run_at") != "" {
+		parsed, err := time.Parse(time.RFC3339, input.Get("run_at"))
+		if err != nil {
+			return task, fmt.Errorf("Run At is not a valid RFC3339 string eg: 2006-01-02T15:04:05Z07:00 %s", err.Error())
+		}
+		task.RunAt = parsed
+	}
+
+	task.Body = input.Get("body")
+	task.NoExpBackoff = input.Get("no_exp_backoff") == "true"
+
+	return task, nil
 }
