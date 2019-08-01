@@ -23,13 +23,11 @@ func init() {
 	queue.Connect(config.KEWPIE_BACKEND, config.QUEUES)
 }
 
-var publish = regexp.MustCompile(`/queues/.*/publish`)
+var queueRoute = regexp.MustCompile(`/queues/.*`)
 var publishMany = regexp.MustCompile(`/queues/.*/publish-many`)
-var subscribe = regexp.MustCompile(`/queues/.*/subscribe`)
-var purge = regexp.MustCompile(`/queues/.*/purge`)
 
-func main() {
-	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func Router() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/health" {
 			healthHandler.ServeHTTP(w, r)
 			return
@@ -37,17 +35,6 @@ func main() {
 
 		if r.URL.Path == "/healthz" {
 			healthHandler.ServeHTTP(w, r)
-			return
-		}
-
-		if publish.MatchString(r.URL.Path) {
-			if r.Method != "POST" {
-				errRes(w, r, http.StatusMethodNotAllowed, "Publish must be done with a POST", nil)
-				return
-			}
-
-			// Take a task over the wire and pass it to the backend
-			publishHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -62,31 +49,34 @@ func main() {
 			return
 		}
 
-		if subscribe.MatchString(r.URL.Path) {
-			// Serve a task and immediately mark it complete yolo
-			subscribeHandler.ServeHTTP(w, r)
-			return
-		}
-
-		if purge.MatchString(r.URL.Path) {
-			if r.Method != "POST" {
-				errRes(w, r, http.StatusMethodNotAllowed, "Purge must be done with a POST", nil)
+		if queueRoute.MatchString(r.URL.Path) {
+			switch r.Method {
+			case "POST":
+				// Take a task over the wire and pass it to the backend
+				publishHandler.ServeHTTP(w, r)
+				return
+			case "GET":
+				// Serve a task and immediately mark it complete yolo
+				subscribeHandler.ServeHTTP(w, r)
+				return
+			case "DELETE":
+				// Purge the named queue
+				fmt.Printf("DEBUG r.Body: %+v \n", r.Body)
+				purgeHandler.ServeHTTP(w, r)
 				return
 			}
-
-			// Purge the named queue
-			purgeHandler.ServeHTTP(w, r)
-			return
 		}
 
 		notFoundHandler.ServeHTTP(w, r)
 		return
-	})
+	}
+}
 
+func main() {
 	addr := ":" + os.Getenv("PORT")
 
 	s := &http.Server{
-		Handler: router,
+		Handler: http.HandlerFunc(Router()),
 		Addr:    addr,
 	}
 

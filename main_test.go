@@ -36,12 +36,12 @@ func TestPublishDelay(t *testing.T) {
 
 	req := &http.Request{
 		Method: "POST",
-		URL:    &url.URL{Path: "/queues/test/publish"},
+		URL:    &url.URL{Path: "/queues/test"},
 		Form:   form,
 	}
 
 	rr := httptest.NewRecorder()
-	publishHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
@@ -62,12 +62,12 @@ func TestPublishRunAt(t *testing.T) {
 
 	req := &http.Request{
 		Method: "POST",
-		URL:    &url.URL{Path: "/queues/test/publish"},
+		URL:    &url.URL{Path: "/queues/test"},
 		Form:   form,
 	}
 
 	rr := httptest.NewRecorder()
-	publishHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
@@ -85,12 +85,12 @@ func TestPublishNoExpBackoff(t *testing.T) {
 
 	req := &http.Request{
 		Method: "POST",
-		URL:    &url.URL{Path: "/queues/test/publish"},
+		URL:    &url.URL{Path: "/queues/test"},
 		Form:   form,
 	}
 
 	rr := httptest.NewRecorder()
-	publishHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
@@ -109,13 +109,13 @@ func TestPublishJSON(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	req, err := http.NewRequest("POST", "/queues/test/publish", bytes.NewReader(payload))
+	req, err := http.NewRequest("POST", "/queues/test", bytes.NewReader(payload))
 	assert.Nil(t, err)
 
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	publishHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
@@ -136,14 +136,14 @@ func TestPublishJSONAPI(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	req, err := http.NewRequest("POST", "/queues/test/publish", bytes.NewReader(payload))
+	req, err := http.NewRequest("POST", "/queues/test", bytes.NewReader(payload))
 	assert.Nil(t, err)
 
 	req.Header.Set("Content-Type", "application/vnd.api+json")
 	req.Header.Set("Accept", "application/vnd.api+json")
 
 	rr := httptest.NewRecorder()
-	publishHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := jsonAPIPayload{}
@@ -163,24 +163,24 @@ func TestSubscribe(t *testing.T) {
 	payload, err := json.Marshal(fixture)
 	assert.Nil(t, err)
 
-	req, err := http.NewRequest("POST", "/queues/pubtest/publish", bytes.NewReader(payload))
+	req, err := http.NewRequest("POST", "/queues/pubtest", bytes.NewReader(payload))
 	assert.Nil(t, err)
 
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	publishHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.Equal(t, res.Body, fixture.Body)
 
-	subreq, err := http.NewRequest("GET", "/queues/pubtest/subscribe", nil)
+	subreq, err := http.NewRequest("GET", "/queues/pubtest", nil)
 	assert.Nil(t, err)
 
 	subrr := httptest.NewRecorder()
-	subscribeHandler(subrr, subreq)
+	Router()(subrr, subreq)
 
 	assert.Equal(t, http.StatusOK, subrr.Code)
 
@@ -202,24 +202,24 @@ func TestPurge(t *testing.T) {
 	payload, err := json.Marshal(fixture)
 	assert.Nil(t, err)
 
-	req, err := http.NewRequest("POST", "/queues/purgetest/publish", bytes.NewReader(payload))
+	req, err := http.NewRequest("POST", "/queues/purgetest", bytes.NewReader(payload))
 	assert.Nil(t, err)
 
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	publishHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.Equal(t, res.Body, fixture.Body)
 
-	purgereq, err := http.NewRequest("GET", "/queues/purgetest/subscribe", nil)
+	purgereq, err := http.NewRequest("DELETE", "/queues/purgetest", nil)
 	assert.Nil(t, err)
 
 	purgerr := httptest.NewRecorder()
-	purgeHandler(purgerr, purgereq)
+	Router()(purgerr, purgereq)
 
 	assert.Equal(t, http.StatusOK, purgerr.Code)
 }
@@ -242,11 +242,11 @@ func TestPurgeMatching(t *testing.T) {
 	assert.Nil(t, queue.Publish(ctx, "purgematchingtest", &fixture))
 	assert.Nil(t, queue.Publish(ctx, "purgematchingtest", &fixture2))
 
-	purgereq, err := http.NewRequest("POST", "/queues/purgematchingtest/purge?matching="+substr1, nil)
+	purgereq, err := http.NewRequest("DELETE", "/queues/purgematchingtest?matching="+substr1, nil)
 	assert.Nil(t, err)
 
 	purgerr := httptest.NewRecorder()
-	purgeHandler(purgerr, purgereq)
+	Router()(purgerr, purgereq)
 
 	assert.Equal(t, http.StatusOK, purgerr.Code)
 
@@ -289,7 +289,7 @@ func TestPublishMany(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	publishManyHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := []kewpie.Task{}
@@ -321,7 +321,7 @@ func TestPublishManyJSON(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	publishManyHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := []kewpie.Task{}
@@ -355,7 +355,7 @@ func TestPublishManyJSONAPI(t *testing.T) {
 	req.Header.Set("Accept", "application/vnd.api+json")
 
 	rr := httptest.NewRecorder()
-	publishManyHandler(rr, req)
+	Router()(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := jsonAPIManyPayload{}

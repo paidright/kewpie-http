@@ -33,15 +33,15 @@ export DB_URI=postgres://kewpie:wut@localhost:5432/kewpie?sslmode=disable
 
 ### Using it
 
-You can `POST` a task payload to `/queues/QUEUE_NAME/publish`.
+You can `POST` a task payload to `/queues/QUEUE_NAME`.
 
 You can `POST` an array of tasks to `/queues/QUEUE_NAME/publish-many`.
 
-You can `GET` a task from `/queues/QUEUE_NAME/subscribe`.
+You can `GET` a task from `/queues/QUEUE_NAME`.
 
-You can purge a queue with a `POST` to `/queues/QUEUE_NAME/purge`.
+You can purge a queue with a `DELETE` to `/queues/QUEUE_NAME`.
 
-If your backend supports it, you can purge only matching messages with a `POST` to `/queues/QUEUE_NAME/purge?matching=foo`
+If your backend supports it, you can purge only matching messages with a `DELETE` to `/queues/QUEUE_NAME?matching=foo`
 
 Either plain 'ol JSON or JSON-API payload formats are supported.
 
