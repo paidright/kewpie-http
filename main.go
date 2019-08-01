@@ -41,12 +41,22 @@ func main() {
 		}
 
 		if publish.MatchString(r.URL.Path) {
+			if r.Method != "POST" {
+				errRes(w, r, http.StatusMethodNotAllowed, "Publish must be done with a POST", nil)
+				return
+			}
+
 			// Take a task over the wire and pass it to the backend
 			publishHandler.ServeHTTP(w, r)
 			return
 		}
 
 		if publishMany.MatchString(r.URL.Path) {
+			if r.Method != "POST" {
+				errRes(w, r, http.StatusMethodNotAllowed, "Publish must be done with a POST", nil)
+				return
+			}
+
 			// Take a task over the wire and pass it to the backend
 			publishManyHandler.ServeHTTP(w, r)
 			return
@@ -59,6 +69,11 @@ func main() {
 		}
 
 		if purge.MatchString(r.URL.Path) {
+			if r.Method != "POST" {
+				errRes(w, r, http.StatusMethodNotAllowed, "Purge must be done with a POST", nil)
+				return
+			}
+
 			// Purge the named queue
 			purgeHandler.ServeHTTP(w, r)
 			return
