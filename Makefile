@@ -22,8 +22,6 @@ $(PLATFORMS):
 	GOOS=$(os) GOARCH=$(arch) go build -o 'dist/$(os)-$(arch)/kewpie_http' .
 	@chmod +x dist/$(os)-$(arch)/kewpie_http
 	@if [ $(os) = windows ]; then mv dist/$(os)-$(arch)/kewpie_http dist/$(os)-$(arch)/kewpie_http.exe; fi
-	zip --junk-paths dist/$(os)-$(arch)/kewpie_http-$(os)-$(arch).zip dist/$(os)-$(arch)/*
-	@if [ $(os) = windows ]; then cp dist/$(os)-$(arch)/kewpie_http.exe dist/$(os)-$(arch)/kewpie_http; fi
 
 test:
 	bash .envrc && go test
