@@ -25,3 +25,13 @@ $(PLATFORMS):
 
 test:
 	bash .envrc && go test
+
+.PHONY: docker_image_build
+docker_image_build: ca-certificates.crt zoneinfo.tar.gz
+	docker build --tag kewpie_http .
+
+ca-certificates.crt: /etc/ssl/certs/ca-certificates.crt
+	cp /etc/ssl/certs/ca-certificates.crt .
+
+zoneinfo.tar.gz: /usr/share/zoneinfo/
+	tar -cvzf zoneinfo.tar.gz /usr/share/zoneinfo/

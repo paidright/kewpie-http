@@ -1,1 +1,3 @@
 dist/*
+ca-certificates.crt
+zoneinfo.tar.gz
