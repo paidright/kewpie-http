@@ -141,7 +141,10 @@ var subscribeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		},
 	}
 
-	queue.Pop(r.Context(), queueName, handler)
+	if err := queue.Pop(r.Context(), queueName, handler); err != nil {
+		errRes(w, r, http.StatusInternalServerError, "Error popping job from queue", err)
+		return
+	}
 })
 
 var healthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
