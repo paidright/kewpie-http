@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -139,4 +140,45 @@ func TestPublishJSONAPI(t *testing.T) {
 	assert.Nil(t, huh.Decode(&res))
 	assert.Empty(t, res.Errors)
 	assert.Equal(t, runAt.Format(time.RFC3339), res.Data.RunAt.Format(time.RFC3339))
+}
+
+func TestSubscribe(t *testing.T) {
+	t.Parallel()
+
+	assert.Nil(t, queue.Purge(context.Background(), "pubtest"))
+
+	fixture := kewpie.Task{
+		Body: `{"hi": "` + uuid.NewV4().String() + `"}`,
+	}
+
+	payload, err := json.Marshal(fixture)
+	assert.Nil(t, err)
+
+	req, err := http.NewRequest("POST", "/queues/pubtest/publish", bytes.NewReader(payload))
+	assert.Nil(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	publishHandler(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	res := kewpie.Task{}
+	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
+	assert.Equal(t, res.Body, fixture.Body)
+
+	subreq, err := http.NewRequest("GET", "/queues/pubtest/subscribe", nil)
+	assert.Nil(t, err)
+
+	subrr := httptest.NewRecorder()
+	subscribeHandler(subrr, subreq)
+
+	assert.Equal(t, http.StatusOK, subrr.Code)
+
+	subbed := kewpie.Task{}
+
+	assert.Nil(t, json.Unmarshal(subrr.Body.Bytes(), &subbed))
+
+	assert.Equal(t, res.Body, subbed.Body)
+	assert.Equal(t, res.ID, subbed.ID)
 }

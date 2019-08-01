@@ -13,6 +13,7 @@ import (
 	"time"
 
 	kewpie "github.com/davidbanham/kewpie_go"
+	"github.com/davidbanham/kewpie_go/types"
 	"github.com/davidbanham/kewpie_http/config"
 )
 
@@ -23,6 +24,7 @@ func init() {
 }
 
 var publish = regexp.MustCompile(`/queues/.*/publish`)
+var subscribe = regexp.MustCompile(`/queues/.*/subscribe`)
 
 func main() {
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,9 +44,9 @@ func main() {
 			return
 		}
 
-		if r.URL.Path == "/subscribe" {
+		if subscribe.MatchString(r.URL.Path) {
 			// Serve a task and immediately mark it complete yolo
-			notImplementedHandler.ServeHTTP(w, r)
+			subscribeHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -104,16 +106,42 @@ var publishHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	sendPayload(w, r, task)
+})
+
+func sendPayload(w http.ResponseWriter, r *http.Request, task kewpie.Task) {
 	if r.Header.Get("Accept") == "application/vnd.api+json" {
 		w.Header().Set("Content-Type", "application/json")
 		payload := jsonAPIPayload{
 			Data: task,
 		}
 		json.NewEncoder(w).Encode(payload)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(task)
+}
+
+type yoloHandler struct {
+	handleFunc func(types.Task) (bool, error)
+}
+
+func (h yoloHandler) Handle(t types.Task) (bool, error) {
+	return h.handleFunc(t)
+}
+
+var subscribeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	queueName := strings.Split(r.URL.Path, "/")[2]
+
+	handler := yoloHandler{
+		handleFunc: func(task kewpie.Task) (bool, error) {
+			sendPayload(w, r, task)
+			return false, nil
+		},
+	}
+
+	queue.Pop(r.Context(), queueName, handler)
 })
 
 var healthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
