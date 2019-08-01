@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -221,4 +222,44 @@ func TestPurge(t *testing.T) {
 	purgeHandler(purgerr, purgereq)
 
 	assert.Equal(t, http.StatusOK, purgerr.Code)
+}
+
+func TestPurgeMatching(t *testing.T) {
+	t.Parallel()
+
+	substr1 := uuid.NewV4().String()
+	fixture := kewpie.Task{
+		Body: `{"hi": "` + substr1 + `"}`,
+	}
+
+	substr2 := uuid.NewV4().String()
+	fixture2 := kewpie.Task{
+		Body: `{"hi": "` + substr2 + `"}`,
+	}
+
+	ctx := context.Background()
+	assert.Nil(t, queue.Purge(ctx, "purgematchingtest"))
+	assert.Nil(t, queue.Publish(ctx, "purgematchingtest", &fixture))
+	assert.Nil(t, queue.Publish(ctx, "purgematchingtest", &fixture2))
+
+	purgereq, err := http.NewRequest("POST", "/queues/purgematchingtest/purge?matching="+substr1, nil)
+	assert.Nil(t, err)
+
+	purgerr := httptest.NewRecorder()
+	purgeHandler(purgerr, purgereq)
+
+	assert.Equal(t, http.StatusOK, purgerr.Code)
+
+	fired := false
+	handler := yoloHandler{
+		handleFunc: func(task kewpie.Task) (bool, error) {
+			fired = true
+			assert.True(t, strings.Contains(task.Body, substr2))
+			assert.False(t, strings.Contains(task.Body, substr1))
+			return false, nil
+		},
+	}
+
+	assert.Nil(t, queue.Pop(ctx, "purgematchingtest", handler))
+	assert.True(t, fired)
 }

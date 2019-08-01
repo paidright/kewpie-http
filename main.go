@@ -163,9 +163,17 @@ var subscribeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 var purgeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	queueName := strings.Split(r.URL.Path, "/")[2]
 
-	if err := queue.Purge(r.Context(), queueName); err != nil {
-		errRes(w, r, http.StatusInternalServerError, "Error purging queue", err)
-		return
+	match := r.URL.Query().Get("matching")
+	if match != "" {
+		if err := queue.PurgeMatching(r.Context(), queueName, match); err != nil {
+			errRes(w, r, http.StatusInternalServerError, "Error purging queue", err)
+			return
+		}
+	} else {
+		if err := queue.Purge(r.Context(), queueName); err != nil {
+			errRes(w, r, http.StatusInternalServerError, "Error purging queue", err)
+			return
+		}
 	}
 
 	sendPayload(w, r, kewpie.Task{})
