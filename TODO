@@ -1,3 +1,1 @@
-Add array endpoint for multiple tasks getting published at once
 Lock down methods for endpoints
-Return a 201 rather than 200 on publish

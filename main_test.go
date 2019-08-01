@@ -43,7 +43,7 @@ func TestPublishDelay(t *testing.T) {
 	rr := httptest.NewRecorder()
 	publishHandler(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.NotEmpty(t, res.ID)
@@ -69,7 +69,7 @@ func TestPublishRunAt(t *testing.T) {
 	rr := httptest.NewRecorder()
 	publishHandler(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.Equal(t, runAt, res.RunAt.Format(time.RFC3339))
@@ -92,7 +92,7 @@ func TestPublishNoExpBackoff(t *testing.T) {
 	rr := httptest.NewRecorder()
 	publishHandler(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.True(t, res.NoExpBackoff)
@@ -117,7 +117,7 @@ func TestPublishJSON(t *testing.T) {
 	rr := httptest.NewRecorder()
 	publishHandler(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.Equal(t, runAt.Format(time.RFC3339), res.RunAt.Format(time.RFC3339))
@@ -145,7 +145,7 @@ func TestPublishJSONAPI(t *testing.T) {
 	rr := httptest.NewRecorder()
 	publishHandler(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := jsonAPIPayload{}
 	huh := json.NewDecoder(rr.Body)
 	assert.Nil(t, huh.Decode(&res))
@@ -171,7 +171,7 @@ func TestSubscribe(t *testing.T) {
 	rr := httptest.NewRecorder()
 	publishHandler(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.Equal(t, res.Body, fixture.Body)
@@ -210,7 +210,7 @@ func TestPurge(t *testing.T) {
 	rr := httptest.NewRecorder()
 	publishHandler(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, http.StatusCreated, rr.Code)
 	res := kewpie.Task{}
 	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
 	assert.Equal(t, res.Body, fixture.Body)
@@ -262,4 +262,106 @@ func TestPurgeMatching(t *testing.T) {
 
 	assert.Nil(t, queue.Pop(ctx, "purgematchingtest", handler))
 	assert.True(t, fired)
+}
+
+func TestGetVal(t *testing.T) {
+	assert.Equal(t, "hai", getVal([]string{"hai"}, 0), "shouldn't be empty")
+	assert.Equal(t, "", getVal([]string{"hai"}, 1), "off by one")
+	assert.Equal(t, "", getVal([]string{"hai"}, 2), "off by two")
+}
+
+func TestPublishMany(t *testing.T) {
+	t.Parallel()
+
+	uniq1 := uuid.NewV4().String()
+	uniq2 := uuid.NewV4().String()
+	form := url.Values{
+		"body": {
+			`{"hi": "` + uniq1 + `"}`,
+			`{"hi": "` + uniq2 + `"}`,
+		},
+	}
+
+	req := &http.Request{
+		Method: "POST",
+		URL:    &url.URL{Path: "/queues/test/publish-many"},
+		Form:   form,
+	}
+
+	rr := httptest.NewRecorder()
+	publishManyHandler(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+	res := []kewpie.Task{}
+	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
+	assert.Equal(t, len(res), 2)
+	assert.Contains(t, res[0].Body, uniq1)
+	assert.Contains(t, res[1].Body, uniq2)
+}
+
+func TestPublishManyJSON(t *testing.T) {
+	t.Parallel()
+
+	uniq1 := uuid.NewV4().String()
+	uniq2 := uuid.NewV4().String()
+
+	payload, err := json.Marshal([]kewpie.Task{
+		kewpie.Task{
+			Body: `{"hi": "` + uniq1 + `"}`,
+		},
+		kewpie.Task{
+			Body: `{"hi": "` + uniq2 + `"}`,
+		},
+	})
+	assert.Nil(t, err)
+
+	req, err := http.NewRequest("POST", "/queues/test/publish-many", bytes.NewReader(payload))
+	assert.Nil(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	publishManyHandler(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+	res := []kewpie.Task{}
+	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
+	assert.Contains(t, res[0].Body, uniq1)
+	assert.Contains(t, res[1].Body, uniq2)
+}
+
+func TestPublishManyJSONAPI(t *testing.T) {
+	t.Parallel()
+
+	uniq1 := uuid.NewV4().String()
+	uniq2 := uuid.NewV4().String()
+
+	payload, err := json.Marshal(jsonAPIManyPayload{
+		Data: []kewpie.Task{
+			kewpie.Task{
+				Body: `{"hi": "` + uniq1 + `"}`,
+			},
+			kewpie.Task{
+				Body: `{"hi": "` + uniq2 + `"}`,
+			},
+		},
+	})
+	assert.Nil(t, err)
+
+	req, err := http.NewRequest("POST", "/queues/test/publish-many", bytes.NewReader(payload))
+	assert.Nil(t, err)
+
+	req.Header.Set("Content-Type", "application/vnd.api+json")
+	req.Header.Set("Accept", "application/vnd.api+json")
+
+	rr := httptest.NewRecorder()
+	publishManyHandler(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+	res := jsonAPIManyPayload{}
+	huh := json.NewDecoder(rr.Body)
+	assert.Nil(t, huh.Decode(&res))
+	assert.Empty(t, res.Errors)
+	assert.Contains(t, res.Data[0].Body, uniq1)
+	assert.Contains(t, res.Data[1].Body, uniq2)
 }

@@ -24,6 +24,7 @@ func init() {
 }
 
 var publish = regexp.MustCompile(`/queues/.*/publish`)
+var publishMany = regexp.MustCompile(`/queues/.*/publish-many`)
 var subscribe = regexp.MustCompile(`/queues/.*/subscribe`)
 var purge = regexp.MustCompile(`/queues/.*/purge`)
 
@@ -42,6 +43,12 @@ func main() {
 		if publish.MatchString(r.URL.Path) {
 			// Take a task over the wire and pass it to the backend
 			publishHandler.ServeHTTP(w, r)
+			return
+		}
+
+		if publishMany.MatchString(r.URL.Path) {
+			// Take a task over the wire and pass it to the backend
+			publishManyHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -102,7 +109,7 @@ var publishHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			errRes(w, r, http.StatusBadRequest, err.Error(), err)
 			return
 		} else {
-			task = decoded
+			task = decoded[0]
 		}
 	}
 
@@ -113,7 +120,55 @@ var publishHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	sendPayload(w, r, task)
+})
+
+var publishManyHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	tasks := []kewpie.Task{}
+
+	if r.Header.Get("Content-Type") == "application/json" {
+		bytes, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			errRes(w, r, http.StatusBadRequest, "Error receiving payload", err)
+			return
+		}
+		if err := json.Unmarshal(bytes, &tasks); err != nil {
+			errRes(w, r, http.StatusBadRequest, "Error decoding payload", err)
+			return
+		}
+	} else if r.Header.Get("Content-Type") == "application/vnd.api+json" {
+		bytes, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			errRes(w, r, http.StatusBadRequest, "Error receiving payload", err)
+			return
+		}
+		payload := jsonAPIManyPayload{}
+		if err := json.Unmarshal(bytes, &payload); err != nil {
+			errRes(w, r, http.StatusBadRequest, "Error decoding payload", err)
+			return
+		}
+		tasks = payload.Data
+	} else {
+		if decoded, err := decodeForm(r.Form); err != nil {
+			errRes(w, r, http.StatusBadRequest, err.Error(), err)
+			return
+		} else {
+			tasks = decoded
+		}
+	}
+
+	queueName := strings.Split(r.URL.Path, "/")[2]
+
+	for _, task := range tasks {
+		if err := queue.Publish(r.Context(), queueName, &task); err != nil {
+			errRes(w, r, http.StatusInternalServerError, "Error handling task", err)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	sendManyPayload(w, r, tasks)
 })
 
 func sendPayload(w http.ResponseWriter, r *http.Request, task kewpie.Task) {
@@ -131,6 +186,26 @@ func sendPayload(w http.ResponseWriter, r *http.Request, task kewpie.Task) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(task); err != nil {
+		errRes(w, r, http.StatusInternalServerError, "Error encoding response", err)
+		return
+	}
+}
+
+func sendManyPayload(w http.ResponseWriter, r *http.Request, tasks []kewpie.Task) {
+	if r.Header.Get("Accept") == "application/vnd.api+json" {
+		w.Header().Set("Content-Type", "application/json")
+		payload := jsonAPIManyPayload{
+			Data: tasks,
+		}
+		if err := json.NewEncoder(w).Encode(payload); err != nil {
+			errRes(w, r, http.StatusInternalServerError, "Error encoding response", err)
+			return
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(tasks); err != nil {
 		errRes(w, r, http.StatusInternalServerError, "Error encoding response", err)
 		return
 	}
@@ -217,33 +292,53 @@ func errRes(w http.ResponseWriter, r *http.Request, status int, message string, 
 	json.NewEncoder(w).Encode(response)
 }
 
-func decodeForm(input url.Values) (kewpie.Task, error) {
-	task := kewpie.Task{}
-
-	if input.Get("delay") != "" {
-		parsed, err := time.ParseDuration(input.Get("delay"))
-		if err != nil {
-			return task, fmt.Errorf("Delay is not a valid duration, eg: 1s %s", err.Error())
-		}
-		task.Delay = parsed
+func getVal(input []string, i int) string {
+	if len(input)-1 < i {
+		return ""
 	}
+	return input[i]
+}
 
-	if input.Get("run_at") != "" {
-		parsed, err := time.Parse(time.RFC3339, input.Get("run_at"))
-		if err != nil {
-			return task, fmt.Errorf("Run At is not a valid RFC3339 string eg: 2006-01-02T15:04:05Z07:00 %s", err.Error())
+func decodeForm(input url.Values) ([]kewpie.Task, error) {
+	tasks := []kewpie.Task{}
+
+	for index, body := range input["body"] {
+		task := kewpie.Task{}
+
+		delay := getVal(input["delay"], index)
+		if delay != "" {
+			parsed, err := time.ParseDuration(delay)
+			if err != nil {
+				return tasks, fmt.Errorf("Delay is not a valid duration, eg: 1s %s", err.Error())
+			}
+			task.Delay = parsed
 		}
-		task.RunAt = parsed
+
+		runAt := getVal(input["run_at"], index)
+		if runAt != "" {
+			parsed, err := time.Parse(time.RFC3339, runAt)
+			if err != nil {
+				return tasks, fmt.Errorf("Run At is not a valid RFC3339 string eg: 2006-01-02T15:04:05Z07:00 %s", err.Error())
+			}
+			task.RunAt = parsed
+		}
+
+		task.Body = body
+		task.NoExpBackoff = getVal(input["no_exp_backoff"], index) == "true"
+
+		tasks = append(tasks, task)
 	}
-
-	task.Body = input.Get("body")
-	task.NoExpBackoff = input.Get("no_exp_backoff") == "true"
-
-	return task, nil
+	return tasks, nil
 }
 
 type jsonAPIPayload struct {
 	Errors []map[string]string `json:"errors"`
 	Data   kewpie.Task         `json:"data"`
+	Meta   map[string]string   `json:"meta"`
+}
+
+type jsonAPIManyPayload struct {
+	Errors []map[string]string `json:"errors"`
+	Data   []kewpie.Task       `json:"data"`
 	Meta   map[string]string   `json:"meta"`
 }

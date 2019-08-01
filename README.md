@@ -35,6 +35,8 @@ export DB_URI=postgres://kewpie:wut@localhost:5432/kewpie?sslmode=disable
 
 You can `POST` a task payload to `/queues/QUEUE_NAME/publish`.
 
+You can `POST` an array of tasks to `/queues/QUEUE_NAME/publish-many`.
+
 You can `GET` a task from `/queues/QUEUE_NAME/subscribe`.
 
 You can purge a queue with a `POST` to `/queues/QUEUE_NAME/purge`.
@@ -69,6 +71,36 @@ JSON-API:
     no_exp_backoff: "If true, don't exponentially back off attempts on failure. Just go your hardest.",
     attempts: "Ignored on publish. On subscribe, the amount of times a task has been attempted.",
   },
+  meta: {}
+}
+```
+
+Many Plain:
+
+```
+[{
+  id: "uuid",
+  body: "A string. Encode it however you like. Often JSON is handy.",
+  run_at: "The time, in RFC3339 format, to wait until before handing this task to a subscriber",
+  delay: "The number of seconds to wait before handing this task to a subscriber. If set, this overrides Run At",
+  no_exp_backoff: "If true, don't exponentially back off attempts on failure. Just go your hardest.",
+  attempts: "Ignored on publish. On subscribe, the amount of times a task has been attempted."
+}]
+```
+
+Many JSON-API:
+
+```
+{
+  errors: [{detail: "A message about the error, if any"}],
+  data: [{
+    id: "uuid",
+    body: "A string. Encode it however you like. Often JSON is handy.",
+    run_at: "The time, in RFC3339 format, to wait until before handing this task to a subscriber",
+    delay: "The number of seconds to wait before handing this task to a subscriber. If set, this overrides Run At",
+    no_exp_backoff: "If true, don't exponentially back off attempts on failure. Just go your hardest.",
+    attempts: "Ignored on publish. On subscribe, the amount of times a task has been attempted.",
+  }],
   meta: {}
 }
 ```
