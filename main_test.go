@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +15,15 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	if err := queue.Purge(context.Background(), "pubtest"); err != nil {
+		log.Fatal(err)
+	}
+	if err := queue.Purge(context.Background(), "test"); err != nil {
+		log.Fatal(err)
+	}
+}
 
 func TestPublishDelay(t *testing.T) {
 	t.Parallel()
@@ -144,8 +154,6 @@ func TestPublishJSONAPI(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 	t.Parallel()
-
-	assert.Nil(t, queue.Purge(context.Background(), "pubtest"))
 
 	fixture := kewpie.Task{
 		Body: `{"hi": "` + uuid.NewV4().String() + `"}`,
