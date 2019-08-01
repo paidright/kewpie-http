@@ -115,12 +115,18 @@ func sendPayload(w http.ResponseWriter, r *http.Request, task kewpie.Task) {
 		payload := jsonAPIPayload{
 			Data: task,
 		}
-		json.NewEncoder(w).Encode(payload)
+		if err := json.NewEncoder(w).Encode(payload); err != nil {
+			errRes(w, r, http.StatusInternalServerError, "Error encoding response", err)
+			return
+		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(task)
+	if err := json.NewEncoder(w).Encode(task); err != nil {
+		errRes(w, r, http.StatusInternalServerError, "Error encoding response", err)
+		return
+	}
 }
 
 type yoloHandler struct {
