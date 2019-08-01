@@ -190,3 +190,35 @@ func TestSubscribe(t *testing.T) {
 	assert.Equal(t, res.Body, subbed.Body)
 	assert.Equal(t, res.ID, subbed.ID)
 }
+
+func TestPurge(t *testing.T) {
+	t.Parallel()
+
+	fixture := kewpie.Task{
+		Body: `{"hi": "` + uuid.NewV4().String() + `"}`,
+	}
+
+	payload, err := json.Marshal(fixture)
+	assert.Nil(t, err)
+
+	req, err := http.NewRequest("POST", "/queues/purgetest/publish", bytes.NewReader(payload))
+	assert.Nil(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	publishHandler(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	res := kewpie.Task{}
+	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
+	assert.Equal(t, res.Body, fixture.Body)
+
+	purgereq, err := http.NewRequest("GET", "/queues/purgetest/subscribe", nil)
+	assert.Nil(t, err)
+
+	purgerr := httptest.NewRecorder()
+	purgeHandler(purgerr, purgereq)
+
+	assert.Equal(t, http.StatusOK, purgerr.Code)
+}

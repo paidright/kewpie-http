@@ -25,6 +25,7 @@ func init() {
 
 var publish = regexp.MustCompile(`/queues/.*/publish`)
 var subscribe = regexp.MustCompile(`/queues/.*/subscribe`)
+var purge = regexp.MustCompile(`/queues/.*/purge`)
 
 func main() {
 	router := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +48,12 @@ func main() {
 		if subscribe.MatchString(r.URL.Path) {
 			// Serve a task and immediately mark it complete yolo
 			subscribeHandler.ServeHTTP(w, r)
+			return
+		}
+
+		if purge.MatchString(r.URL.Path) {
+			// Purge the named queue
+			purgeHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -151,6 +158,17 @@ var subscribeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		errRes(w, r, http.StatusInternalServerError, "Error popping job from queue", err)
 		return
 	}
+})
+
+var purgeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	queueName := strings.Split(r.URL.Path, "/")[2]
+
+	if err := queue.Purge(r.Context(), queueName); err != nil {
+		errRes(w, r, http.StatusInternalServerError, "Error purging queue", err)
+		return
+	}
+
+	sendPayload(w, r, kewpie.Task{})
 })
 
 var healthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
