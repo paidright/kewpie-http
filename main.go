@@ -180,7 +180,7 @@ var purgeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 })
 
 var healthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("ok"))
+	w.Write([]byte(currentVersion))
 	return
 })
 
