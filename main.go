@@ -14,7 +14,7 @@ import (
 
 	kewpie "github.com/davidbanham/kewpie_go"
 	"github.com/davidbanham/kewpie_go/types"
-	"github.com/davidbanham/kewpie_http/config"
+	"github.com/paidright/kewpie_http/config"
 )
 
 var queue kewpie.Kewpie

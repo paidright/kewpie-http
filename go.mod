@@ -1,4 +1,4 @@
-module github.com/davidbanham/kewpie_http
+module github.com/paidright/kewpie_http
 
 go 1.12
 
