@@ -365,3 +365,28 @@ func TestPublishManyJSONAPI(t *testing.T) {
 	assert.Contains(t, res.Data[0].Body, uniq1)
 	assert.Contains(t, res.Data[1].Body, uniq2)
 }
+
+func TestPublishManyJSONAPIBodyFormats(t *testing.T) {
+	t.Parallel()
+
+	bodies := []string{
+		`{"sub": "object"}`,
+		`lolwut`,
+		`{something: "else"}`,
+	}
+
+	for _, body := range bodies {
+		payload := []byte(`{"data":[{"id":"","body": ` + body + `,"delay":0,"run_at":"0001-01-01T00:00:00Z","no_exp_backoff":false,"attempts":0}]}`)
+
+		req, err := http.NewRequest("POST", "/queues/test/publish-many", bytes.NewReader(payload))
+		assert.Nil(t, err)
+
+		req.Header.Set("Content-Type", "application/vnd.api+json")
+		req.Header.Set("Accept", "application/vnd.api+json")
+
+		rr := httptest.NewRecorder()
+		Router()(rr, req)
+
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	}
+}
