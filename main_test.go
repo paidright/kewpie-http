@@ -24,6 +24,9 @@ func init() {
 	if err := queue.Purge(context.Background(), "test"); err != nil {
 		log.Fatal(err)
 	}
+	if err := queue.Purge(context.Background(), "tagstest"); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func TestPublishDelay(t *testing.T) {
@@ -389,4 +392,47 @@ func TestPublishManyJSONAPIBodyFormats(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 	}
+}
+
+func TestPublishJSONTags(t *testing.T) {
+	t.Parallel()
+
+	uniq := uuid.NewV4().String()
+
+	payload, err := json.Marshal(kewpie.Task{
+		Body: `{"hi": "` + uuid.NewV4().String() + `"}`,
+		Tags: kewpie.Tags{
+			"foo": uniq,
+		},
+	})
+	assert.Nil(t, err)
+
+	req, err := http.NewRequest("POST", "/queues/tagstest", bytes.NewReader(payload))
+	assert.Nil(t, err)
+
+	req.Header.Set("Content-Type", "application/json")
+
+	rr := httptest.NewRecorder()
+	Router()(rr, req)
+
+	assert.Equal(t, http.StatusCreated, rr.Code)
+	res := kewpie.Task{}
+	assert.Nil(t, json.Unmarshal(rr.Body.Bytes(), &res))
+	assert.Equal(t, uniq, res.Tags["foo"])
+
+	subreq, err := http.NewRequest("GET", "/queues/tagstest", nil)
+	assert.Nil(t, err)
+
+	subrr := httptest.NewRecorder()
+	Router()(subrr, subreq)
+
+	assert.Equal(t, http.StatusOK, subrr.Code)
+
+	subbed := kewpie.Task{}
+
+	assert.Nil(t, json.Unmarshal(subrr.Body.Bytes(), &subbed))
+
+	assert.Equal(t, res.Body, subbed.Body)
+	assert.Equal(t, res.ID, subbed.ID)
+	assert.Equal(t, res.Tags, subbed.Tags)
 }
