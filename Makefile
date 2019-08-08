@@ -19,9 +19,9 @@ $(PLATFORMS):
 	@echo "Building for $(os)-$(arch)"
 	@-mkdir -p dist/$(os)-$(arch)
 	@-rm -r dist/$(os)-$(arch)
-	GOOS=$(os) GOARCH=$(arch) go build -o 'dist/$(os)-$(arch)/kewpie_http' .
-	@chmod +x dist/$(os)-$(arch)/kewpie_http
-	@if [ $(os) = windows ]; then mv dist/$(os)-$(arch)/kewpie_http dist/$(os)-$(arch)/kewpie_http.exe; fi
+	GOOS=$(os) GOARCH=$(arch) go build -o 'dist/kewpie_http_$(os)_$(arch)' .
+	@chmod +x dist/kewpie_http_$(os)_$(arch)
+	@if [ $(os) = windows ]; then mv dist/kewpie_http_$(os)_$(arch) dist/kewpie_http_$(os)_$(arch).exe; fi
 
 test:
 	bash .envrc && go test
