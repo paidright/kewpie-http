@@ -2,7 +2,7 @@
 
 > Put your Kewpie in the Cloud
 
-![Kewpie HTTP Logo](https://notbad.software/img/kewpie_http.jpg "Kewpie HTTP Logo")
+![Kewpie HTTP Logo](https://notbad.software/img/kewpie_http.jpg "Picture of a Kewpie doll standing on a cloud")
 
 [Kewpie](https://github.com/davidbanham/kewpie_go) is a task queue abstraction over multiple backends. This is an HTTP server that wraps that abstraction for times when you don't want to call the library directly.
 
