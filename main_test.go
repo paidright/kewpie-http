@@ -132,9 +132,11 @@ func TestPublishJSONAPI(t *testing.T) {
 	runAt := time.Now().Add(1 * time.Minute)
 
 	payload, err := json.Marshal(jsonAPIPayload{
-		Data: kewpie.Task{
-			Body:  `{"hi": "` + uuid.NewV4().String() + `"}`,
-			RunAt: runAt,
+		Data: jsonAPIData{
+			Attributes: kewpie.Task{
+				Body:  `{"hi": "` + uuid.NewV4().String() + `"}`,
+				RunAt: runAt,
+			},
 		},
 	})
 	assert.Nil(t, err)
@@ -153,7 +155,7 @@ func TestPublishJSONAPI(t *testing.T) {
 	huh := json.NewDecoder(rr.Body)
 	assert.Nil(t, huh.Decode(&res))
 	assert.Empty(t, res.Errors)
-	assert.Equal(t, runAt.Format(time.RFC3339), res.Data.RunAt.Format(time.RFC3339))
+	assert.Equal(t, runAt.Format(time.RFC3339), res.Data.Attributes.RunAt.Format(time.RFC3339))
 }
 
 func TestSubscribe(t *testing.T) {
@@ -340,12 +342,16 @@ func TestPublishManyJSONAPI(t *testing.T) {
 	uniq2 := uuid.NewV4().String()
 
 	payload, err := json.Marshal(jsonAPIManyPayload{
-		Data: []kewpie.Task{
-			kewpie.Task{
-				Body: `{"hi": "` + uniq1 + `"}`,
+		Data: []jsonAPIData{
+			jsonAPIData{
+				Attributes: kewpie.Task{
+					Body: `{"hi": "` + uniq1 + `"}`,
+				},
 			},
-			kewpie.Task{
-				Body: `{"hi": "` + uniq2 + `"}`,
+			jsonAPIData{
+				Attributes: kewpie.Task{
+					Body: `{"hi": "` + uniq2 + `"}`,
+				},
 			},
 		},
 	})
@@ -365,8 +371,8 @@ func TestPublishManyJSONAPI(t *testing.T) {
 	huh := json.NewDecoder(rr.Body)
 	assert.Nil(t, huh.Decode(&res))
 	assert.Empty(t, res.Errors)
-	assert.Contains(t, res.Data[0].Body, uniq1)
-	assert.Contains(t, res.Data[1].Body, uniq2)
+	assert.Contains(t, res.Data[0].Attributes.Body, uniq1)
+	assert.Contains(t, res.Data[1].Attributes.Body, uniq2)
 }
 
 func TestPublishManyJSONAPIBodyFormats(t *testing.T) {
@@ -379,7 +385,7 @@ func TestPublishManyJSONAPIBodyFormats(t *testing.T) {
 	}
 
 	for _, body := range bodies {
-		payload := []byte(`{"data":[{"id":"","body": ` + body + `,"delay":0,"run_at":"0001-01-01T00:00:00Z","no_exp_backoff":false,"attempts":0}]}`)
+		payload := []byte(`{"data": { "attributes": [{"id":"","body": ` + body + `,"delay":0,"run_at":"0001-01-01T00:00:00Z","no_exp_backoff":false,"attempts":0}]}}`)
 
 		req, err := http.NewRequest("POST", "/queues/test/publish-many", bytes.NewReader(payload))
 		assert.Nil(t, err)

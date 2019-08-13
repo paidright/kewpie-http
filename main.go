@@ -108,7 +108,7 @@ var publishHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 			errRes(w, r, http.StatusBadRequest, "Error decoding payload", err)
 			return
 		}
-		task = payload.Data
+		task = payload.Data.Attributes
 	} else {
 		if decoded, err := decodeForm(r.Form); err != nil {
 			errRes(w, r, http.StatusBadRequest, err.Error(), err)
@@ -153,7 +153,9 @@ var publishManyHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Re
 			errRes(w, r, http.StatusBadRequest, "Error decoding payload", err)
 			return
 		}
-		tasks = payload.Data
+		for _, data := range payload.Data {
+			tasks = append(tasks, data.Attributes)
+		}
 	} else {
 		if decoded, err := decodeForm(r.Form); err != nil {
 			errRes(w, r, http.StatusBadRequest, err.Error(), err)
@@ -180,7 +182,11 @@ func sendPayload(w http.ResponseWriter, r *http.Request, task kewpie.Task) {
 	if r.Header.Get("Accept") == "application/vnd.api+json" {
 		w.Header().Set("Content-Type", "application/json")
 		payload := jsonAPIPayload{
-			Data: task,
+			Data: jsonAPIData{
+				Type:       "jobs",
+				ID:         task.ID,
+				Attributes: task,
+			},
 		}
 		if err := json.NewEncoder(w).Encode(payload); err != nil {
 			errRes(w, r, http.StatusInternalServerError, "Error encoding response", err)
@@ -199,8 +205,13 @@ func sendPayload(w http.ResponseWriter, r *http.Request, task kewpie.Task) {
 func sendManyPayload(w http.ResponseWriter, r *http.Request, tasks []kewpie.Task) {
 	if r.Header.Get("Accept") == "application/vnd.api+json" {
 		w.Header().Set("Content-Type", "application/json")
-		payload := jsonAPIManyPayload{
-			Data: tasks,
+		payload := jsonAPIManyPayload{}
+		for _, task := range tasks {
+			payload.Data = append(payload.Data, jsonAPIData{
+				Type:       "jobs",
+				ID:         task.ID,
+				Attributes: task,
+			})
 		}
 		if err := json.NewEncoder(w).Encode(payload); err != nil {
 			errRes(w, r, http.StatusInternalServerError, "Error encoding response", err)
@@ -338,12 +349,18 @@ func decodeForm(input url.Values) ([]kewpie.Task, error) {
 
 type jsonAPIPayload struct {
 	Errors []map[string]string `json:"errors"`
-	Data   kewpie.Task         `json:"data"`
+	Data   jsonAPIData         `json:"data"`
 	Meta   map[string]string   `json:"meta"`
+}
+
+type jsonAPIData struct {
+	Type       string      `json:"type"`
+	ID         string      `json:"id"`
+	Attributes kewpie.Task `json:"attributes"`
 }
 
 type jsonAPIManyPayload struct {
 	Errors []map[string]string `json:"errors"`
-	Data   []kewpie.Task       `json:"data"`
+	Data   []jsonAPIData       `json:"data"`
 	Meta   map[string]string   `json:"meta"`
 }

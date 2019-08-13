@@ -64,12 +64,16 @@ JSON-API:
 {
   errors: [{detail: "A message about the error, if any"}],
   data: {
+    type: "jobs",
     id: "uuid",
-    body: "A string. Encode it however you like. Often JSON is handy.",
-    run_at: "The time, in RFC3339 format, to wait until before handing this task to a subscriber",
-    delay: "The number of seconds to wait before handing this task to a subscriber. If set, this overrides Run At",
-    no_exp_backoff: "If true, don't exponentially back off attempts on failure. Just go your hardest.",
-    attempts: "Ignored on publish. On subscribe, the amount of times a task has been attempted.",
+    attributes: {
+      id: "uuid",
+      body: "A string. Encode it however you like. Often JSON is handy.",
+      run_at: "The time, in RFC3339 format, to wait until before handing this task to a subscriber",
+      delay: "The number of seconds to wait before handing this task to a subscriber. If set, this overrides Run At",
+      no_exp_backoff: "If true, don't exponentially back off attempts on failure. Just go your hardest.",
+      attempts: "Ignored on publish. On subscribe, the amount of times a task has been attempted."
+    }
   },
   meta: {}
 }
@@ -94,12 +98,16 @@ Many JSON-API:
 {
   errors: [{detail: "A message about the error, if any"}],
   data: [{
+    type: "jobs",
     id: "uuid",
-    body: "A string. Encode it however you like. Often JSON is handy.",
-    run_at: "The time, in RFC3339 format, to wait until before handing this task to a subscriber",
-    delay: "The number of seconds to wait before handing this task to a subscriber. If set, this overrides Run At",
-    no_exp_backoff: "If true, don't exponentially back off attempts on failure. Just go your hardest.",
-    attempts: "Ignored on publish. On subscribe, the amount of times a task has been attempted.",
+    attributes: {
+      id: "uuid",
+      body: "A string. Encode it however you like. Often JSON is handy.",
+      run_at: "The time, in RFC3339 format, to wait until before handing this task to a subscriber",
+      delay: "The number of seconds to wait before handing this task to a subscriber. If set, this overrides Run At",
+      no_exp_backoff: "If true, don't exponentially back off attempts on failure. Just go your hardest.",
+      attempts: "Ignored on publish. On subscribe, the amount of times a task has been attempted."
+    }
   }],
   meta: {}
 }
