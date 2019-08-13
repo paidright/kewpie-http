@@ -61,7 +61,6 @@ func Router() func(w http.ResponseWriter, r *http.Request) {
 				return
 			case "DELETE":
 				// Purge the named queue
-				fmt.Printf("DEBUG r.Body: %+v \n", r.Body)
 				purgeHandler.ServeHTTP(w, r)
 				return
 			}
