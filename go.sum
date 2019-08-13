@@ -29,6 +29,10 @@ github.com/davidbanham/kewpie_go v0.0.0-20190808014024-aca27a066246 h1:Av/A3kYL9
 github.com/davidbanham/kewpie_go v0.0.0-20190808014024-aca27a066246/go.mod h1:fBrGvxFaS1F1GJsd3892srR9gmtYN7z0dxvPI3arkCY=
 github.com/davidbanham/kewpie_go v0.0.0-20190808052539-9e3e815f5691 h1:lNpcbR6PKU/8GVP6eBbgsNgmIvR7OewOEnG0ZpNojIE=
 github.com/davidbanham/kewpie_go v0.0.0-20190808052539-9e3e815f5691/go.mod h1:fBrGvxFaS1F1GJsd3892srR9gmtYN7z0dxvPI3arkCY=
+github.com/davidbanham/kewpie_go v0.0.0-20190813233717-5d1f0a3e123c h1:0THKijjX38GrlqvH4QTB5QW2Vrzt1o9JDaydr7ElVoc=
+github.com/davidbanham/kewpie_go v0.0.0-20190813233717-5d1f0a3e123c/go.mod h1:fBrGvxFaS1F1GJsd3892srR9gmtYN7z0dxvPI3arkCY=
+github.com/davidbanham/kewpie_go v0.0.0-20190813234442-8590f2182a1c h1:iG5rGiPnsZfPJKTEKkTuxNrskq38NRGuzHLQMChi5uw=
+github.com/davidbanham/kewpie_go v0.0.0-20190813234442-8590f2182a1c/go.mod h1:fBrGvxFaS1F1GJsd3892srR9gmtYN7z0dxvPI3arkCY=
 github.com/davidbanham/required_env v0.0.0-20150902120453-a84628a4c244 h1:FgQ8KQ99RjcMqaTSqmdisj2quuDKlL1x62SoRtZQwqw=
 github.com/davidbanham/required_env v0.0.0-20150902120453-a84628a4c244/go.mod h1:zJVA+kv43obXkwVzNtnVJK9rIUvzRtV+rSe1qXyf4xk=
 github.com/go-ini/ini v1.33.0 h1:/0Y2X+/6jgfPYl2LOihvxikDfznXMufz0Zkr3mW+7Zg=

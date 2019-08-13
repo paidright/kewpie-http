@@ -270,6 +270,10 @@ var purgeHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 })
 
 var healthHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	if err := queue.Healthy(r.Context()); err != nil {
+		errRes(w, r, http.StatusInternalServerError, "Queue backend is unhealthy", err)
+		return
+	}
 	w.Write([]byte(currentVersion))
 	return
 })
